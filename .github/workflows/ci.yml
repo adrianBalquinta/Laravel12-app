@@ -49,4 +49,8 @@ jobs:
 
       - name: Run tests
         run: |
-          if [ -f vendor/bin/pest ]; then vendor/bin/pest -q; else vendor/bin/phpunit -q; fi
+            if [ -f vendor/bin/pest ]; then
+              vendor/bin/pest --ci --no-progress
+            else
+              vendor/bin/phpunit --no-progress
+            fi
