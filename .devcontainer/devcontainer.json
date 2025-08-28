@@ -1,14 +1,7 @@
 {
   "name": "Laravel 12 (Universal + SQLite)",
   // No "image" and no "build/dockerfile" -> use default universal image
-  "features": {
-    // PHP with Composer
-    "ghcr.io/devcontainers/features/php:1": { "version": "8.3", "installComposer": true },
-    // Match your runtime (you currently have Node v22)
-    "ghcr.io/devcontainers/features/node:1": { "version": "22" },
-    // Optional: GitHub CLI if you like
-    "ghcr.io/devcontainers/features/github-cli:1": {}
-  },
+  // no "features" at all -> avoids a build stage
   "forwardPorts": [8000, 5173],
   "portsAttributes": {
     "8000": { "label": "Laravel" },
@@ -16,6 +9,6 @@
   },
   // Silence Xdebug in CLI to avoid the noisy warning
   "containerEnv": { "XDEBUG_MODE": "off", "XDEBUG_CONFIG": "" },
-  "postCreateCommand": "bash .devcontainer/post-create.sh",
-  "remoteUser": "vscode"
+  "postCreateCommand": "bash .devcontainer/post-create.sh"
+  
 }
