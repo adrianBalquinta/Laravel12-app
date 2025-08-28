@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, intl, gd, pdo_mysql, pdo_sqlite, bcmath
+          coverage: none
+
+      - name: Cache composer
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install JS deps
+        run: npm ci
+
+      - name: Build assets
+        run: npm run build
+
+      - name: App key & DB (SQLite)
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          mkdir -p database && touch database/database.sqlite
+          php -r 'file_put_contents(".env", preg_replace("/^DB_CONNECTION=.*/m","DB_CONNECTION=sqlite", file_get_contents(".env")));'
+          php artisan migrate --force
+
+      - name: Run tests
+        run: |
+          if [ -f vendor/bin/pest ]; then vendor/bin/pest -q; else vendor/bin/phpunit -q; fi

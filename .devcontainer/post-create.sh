@@ -1,22 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Create project if empty
+# 1) Bootstrap project (if repo is empty)
 if [ ! -f artisan ]; then
   composer create-project laravel/laravel .
 fi
 
-# Env & key
+# 2) Env + app key
 cp -n .env.example .env
 php artisan key:generate --force
 
-# Default to SQLite (zero-setup)
+# 3) Switch to SQLite (zero config)
 mkdir -p database
 touch database/database.sqlite
-# Ensure DB is sqlite in .env (others are ignored)
-perl -0777 -pe 's/^DB_CONNECTION=.*/DB_CONNECTION=sqlite/m' -i .env
+php -r 'file_put_contents(".env", preg_replace("/^DB_CONNECTION=.*/m", "DB_CONNECTION=sqlite", file_get_contents(".env")));'
 
-# Install JS deps and build dev assets
+# 4) Install assets and run migrations
 npm install
-# don’t start dev servers here; user will run them interactively
 php artisan migrate --force || true
+
+# 5) Optional niceties
+php artisan storage:link || true
