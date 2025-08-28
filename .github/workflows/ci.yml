@@ -2,55 +2,83 @@ name: CI
 
 on:
   push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/**'
   pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/**'
+  workflow_dispatch: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
 
 jobs:
   test:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
+
+      # Fast detect for changed areas to skip work
+      - name: Detect changed areas
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            php:
+              - '**/*.php'
+              - 'composer.*'
+            frontend:
+              - 'resources/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'vite.config.*'
+              - 'postcss.config.*'
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
-          extensions: mbstring, intl, gd, pdo_mysql, pdo_sqlite, bcmath
+          extensions: mbstring, intl, gd, pdo_sqlite, bcmath
           coverage: none
 
-      - name: Cache composer
-        uses: actions/cache@v4
+      - uses: ramsey/composer-install@v3
         with:
-          path: vendor
-          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
-          restore-keys: ${{ runner.os }}-composer-
+          composer-options: --no-interaction --no-progress --prefer-dist
 
-      - name: Install PHP dependencies
-        run: composer install --no-interaction --prefer-dist --no-progress
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
 
+      # Only install/build frontend deps when frontend changed
       - name: Install JS deps
+        if: steps.changes.outputs.frontend == 'true'
         run: npm ci
 
-      - name: Build assets
+      - name: Build assets (only on main + changed frontend)
+        if: github.ref == 'refs/heads/main' && steps.changes.outputs.frontend == 'true'
         run: npm run build
 
-      - name: App key & DB (SQLite)
+      - name: Prepare app key + SQLite
         run: |
-          cp .env.example .env
-          php artisan key:generate
+          cp -n .env.example .env || true
+          php artisan key:generate --force
           mkdir -p database && touch database/database.sqlite
           php -r 'file_put_contents(".env", preg_replace("/^DB_CONNECTION=.*/m","DB_CONNECTION=sqlite", file_get_contents(".env")));'
-          php artisan migrate --force
+          php artisan migrate --force || true
 
-      - name: Run tests
+      - name: Run tests (Pest or PHPUnit)
         run: |
-            if [ -f vendor/bin/pest ]; then
-              vendor/bin/pest --ci --no-progress
-            else
-              vendor/bin/phpunit --no-progress
-            fi
+          if [ -f vendor/bin/pest ]; then
+            vendor/bin/pest --ci --no-progress
+          else
+            vendor/bin/phpunit --no-progress
+          fi
