@@ -1,26 +1,21 @@
 {
-  "name": "Laravel 12 (PHP 8.3 + Node 20, SQLite)",
-  "build": { "dockerfile": "Dockerfile" },
+  "name": "Laravel 12 (Universal + SQLite)",
+  // No "image" and no "build/dockerfile" -> use default universal image
   "features": {
-    "ghcr.io/devcontainers/features/node:1": { "version": "20" },
+    // PHP with Composer
+    "ghcr.io/devcontainers/features/php:1": { "version": "8.3", "installComposer": true },
+    // Match your runtime (you currently have Node v22)
+    "ghcr.io/devcontainers/features/node:1": { "version": "22" },
+    // Optional: GitHub CLI if you like
     "ghcr.io/devcontainers/features/github-cli:1": {}
-  },
-  "customizations": {
-    "vscode": {
-      "extensions": [
-        "bmewburn.vscode-intelephense-client",
-        "xdebug.php-debug",
-        "EditorConfig.EditorConfig",
-        "esbenp.prettier-vscode"
-      ]
-    }
   },
   "forwardPorts": [8000, 5173],
   "portsAttributes": {
-    "8000": { "label": "Laravel", "requireLocalPort": false },
-    "5173": { "label": "Vite HMR", "requireLocalPort": false }
+    "8000": { "label": "Laravel" },
+    "5173": { "label": "Vite HMR" }
   },
+  // Silence Xdebug in CLI to avoid the noisy warning
+  "containerEnv": { "XDEBUG_MODE": "off", "XDEBUG_CONFIG": "" },
   "postCreateCommand": "bash .devcontainer/post-create.sh",
-  "remoteUser": "vscode",
-  "workspaceFolder": "/workspaces/Laravel12-app/app"
+  "remoteUser": "vscode"
 }
